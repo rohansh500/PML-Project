@@ -1,0 +1,79 @@
+---
+title: "Practical Machine Learning"
+author: "Rohan Sharma"
+date: "10/06/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction  
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.  
+
+In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.  
+
+Preloading packages
+
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(rattle)
+```
+
+##Acquiring the data
+```{r}
+set.seed(12345)
+training <- read.csv("data/pml-training.csv")
+testing <- read.csv("data/pml-testing.csv")
+```
+
+##Cleaning the data
+```{r}
+features <- names(testing[,colSums(is.na(testing)) == 0])[8:59]
+trainclasse <- training[,c(features,"classe")]
+testproblem <- testing[,c(features,"problem_id")]
+```
+
+##Partitioning the data
+```{r}
+inTrain <- createDataPartition(trainclasse$classe, p=0.7, list = FALSE)
+myTraining <- trainclasse[inTrain,]
+myTesting <- trainclasse[-inTrain,]
+```
+
+
+##Decision Tree Prediction
+```{r}
+set.seed(12345)
+DTmodel <- rpart(classe ~ ., data = myTraining, method = "class")
+fancyRpartPlot(DTmodel)
+DTpredict <- predict(DTmodel, myTesting, type = "class")
+confusionMatrix(DTpredict, myTesting$classe)
+```
+
+##Random Forest Prediction
+```{r}
+RFmodel <- randomForest(classe ~ ., data = myTraining)
+RFpredict <- predict(RFmodel, myTesting, type = "class")
+confusionMatrix(RFpredict, myTesting$classe)
+```
+
+##Since the random forest model's accuracy was 99.3%, the out of sample error is 0.007.
+
+##We will use the random forest model to submit our predictions.
+```{r}
+FinalPredict <- predict(RFmodel, testing, type = "class")
+FinalPredict
+pml_write_files = function(x){
+    n = length(x)
+    for(i in 1:n){
+        filename = paste0("problem_id_",i,".txt")
+        write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+    }
+}
+pml_write_files(FinalPredict)
+```
